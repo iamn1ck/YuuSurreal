@@ -2,7 +2,7 @@ import { Color } from "./Basic Types/Color";
 import { Quaternion } from "./Basic Types/Quaternion";
 import { Vector2 } from "./Basic Types/Vector2";
 import { Vector3 } from "./Basic Types/Vector3";
-import { Entity } from "./Entity";
+import { Entity } from "./Entity/Entity";
 
 
 export const spawnPrimitive = {
@@ -10,7 +10,6 @@ export const spawnPrimitive = {
   plane,
   sphere,
   cone,
-  cubeScaled,
 }
 
 /**
@@ -40,22 +39,6 @@ function cube(pos: Vector3, scale: Vector3, rot: Quaternion, color: Color, alpha
   return entity;
 }
 
-function cubeScaled(pos: Vector3, scale: Vector3, rot: Quaternion, color: Color, alphaTransparency: number, hasCollider: boolean, type: BaseNodeTypes, parent: Entity | undefined): Entity {
-  const entity = new Entity(pos, rot, Vector3.one, parent, type);
-
-  entity.mesh.create(...getShadeSmoothStretchedUVCube());
-
-  entity.mesh.color.set(color, Math.min(1, alphaTransparency));
-
-  if (hasCollider && entity.mesh.nodeID) {
-    entity.collider.createBox(Vector3.one); // Note: Keep this at Vector3.one since the entity scale handles the collider size too
-  }
-
-  // Keep your original entity scaling intact!
-  entity.scale = scale;
-
-  return entity;
-}
 
 
 
@@ -263,28 +246,38 @@ function getShadeSmoothStretchedUVCube(): [Vector3[], Vector2[], number[]] {
   return stretchedUVCube;
 }
 
-function getShadeSmoothPlane(drawSide: 'Front' | 'Back' | 'Both'): [Vector3[], Vector2[], number[]] {
-  const verts: Vector3[] = [
-    new Vector3(-0.5, 0.5, 0), //Top Left
-    new Vector3(0.5, 0.5, 0), //Top Right
-    new Vector3(0.5, -0.5, 0), //Bottom Right
-    new Vector3(-0.5, -0.5, 0), //Bottom Left
-  ];
-
-  const uvs: Vector2[] = [
-    new Vector2(0, 1), //Top Left
-    new Vector2(1, 1), //Top Right
-    new Vector2(1, 0), //Bottom Right
-    new Vector2(0, 0), //Bottom Left
-  ];
-
+function getShadeSmoothPlane(drawSide: 'Front' | 'Back' | 'Both', subdivisions: number = 4): [Vector3[], Vector2[], number[]] {
+  const res = Math.max(1, subdivisions);
+  const verts: Vector3[] = [];
+  const uvs: Vector2[] = [];
   const triangles: number[] = [];
 
-  if (drawSide === 'Front' || drawSide === 'Both') {
-    triangles.push(...getQuadTriangles(0, 1, 2, 3));
+  for (let y = 0; y <= res; y++) {
+    const vNorm = y / res;
+    const posY = 0.5 - vNorm;
+    for (let x = 0; x <= res; x++) {
+      const uNorm = x / res;
+      const posX = -0.5 + uNorm;
+      verts.push(new Vector3(posX, posY, 0));
+      uvs.push(new Vector2(uNorm, 1 - vNorm));
+    }
   }
-  if (drawSide === 'Back' || drawSide === 'Both') {
-    triangles.push(...getQuadTriangles(1, 0, 3, 2));
+
+  const stride = res + 1;
+  for (let y = 0; y < res; y++) {
+    for (let x = 0; x < res; x++) {
+      const tl = y * stride + x;
+      const tr = tl + 1;
+      const bl = (y + 1) * stride + x;
+      const br = bl + 1;
+
+      if (drawSide === 'Front' || drawSide === 'Both') {
+        triangles.push(tl, tr, bl, bl, tr, br);
+      }
+      if (drawSide === 'Back' || drawSide === 'Both') {
+        triangles.push(tr, tl, br, br, tl, bl);
+      }
+    }
   }
 
   return [verts, uvs, triangles];
@@ -513,5 +506,3 @@ function getCone(columns: number): [Vector3[], Vector2[], number[]] {
     return [verts, uvs, triangles];
   }
 }
-
-
