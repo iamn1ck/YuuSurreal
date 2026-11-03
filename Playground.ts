@@ -36,9 +36,10 @@ async function start() {
   // Spawn flower particle emitters from particle-emitter-summary
   FlowerParticleEmitters.spawnAllEmitters();
   console.log('spawned flower particle emitters');
+    new Vector3(-0.995740, 76.857620, 144.320648),
 
   scene.spawnScene()
-  Player.position.set(new Vector3(-1, 32, 131.5));
+  Player.position.set(new Vector3(-1, 77, 144));
 
   // if you press right trigger go up 11 units
 
